@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Compare</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+
+    .half {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.3s ease;
+      position: relative;
+    }
+
+    .picker-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .color-input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .input-and-picker {
+      position: relative;
+      display: inline-block;
+    }
+
+    /* color-input: hide trigger and inline input; we use our text input and open via show() */
+    .color-input-anchor {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 0;
+      height: 0;
+      overflow: visible;
+      opacity: 0;
+    }
+    .color-input-anchor::part(trigger) {
+      display: none;
+    }
+    .color-input-anchor::part(input) {
+      display: none;
+    }
+
+    .text-input-sizer {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      white-space: pre;
+      font-size: 14px;
+      font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, monospace;
+      padding: 0;
+      margin: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .text-input {
+      min-width: 80px;
+      width: 80px;
+      padding: 8px 12px;
+      border: 2px solid rgba(0, 0, 0, 0.15);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, monospace;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(4px);
+      outline: none;
+      transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+      color: #111;
+      cursor: pointer;
+      box-sizing: content-box;
+    }
+
+    .text-input:focus {
+      cursor: text;
+      border-color: rgba(0, 0, 0, 0.4);
+    }
+
+    .half.light-text .text-input {
+      background: rgba(0, 0, 0, 0.35);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    .half.light-text .text-input:focus {
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .half.light-text .text-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .text-input.invalid {
+      border-color: #e74c3c;
+    }
+
+    .copy-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      border: none;
+      background: rgba(0, 0, 0, 0.08);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    .copy-btn:active {
+      background: rgba(0, 0, 0, 0.22);
+    }
+
+    .copy-btn svg {
+      width: 16px;
+      height: 16px;
+      stroke: rgba(0, 0, 0, 0.5);
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .half.light-text .copy-btn {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .half.light-text .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .half.light-text .copy-btn:active {
+      background: rgba(255, 255, 255, 0.30);
+    }
+
+    .half.light-text .copy-btn svg {
+      stroke: rgba(255, 255, 255, 0.6);
+    }
+
+    .color-label {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.5);
+      letter-spacing: 0.03em;
+      user-select: none;
+      transition: color 0.2s ease;
+    }
+
+    .half.light-text .color-label {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .divider {
+      width: 1px;
+      background: rgba(0, 0, 0, 0.1);
+      align-self: stretch;
+      position: relative;
+    }
+
+    .dice-btn {
+      position: absolute;
+      top: calc(50% - 10px);
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid #ddd;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    .dice-btn:hover {
+      transform: translate(-50%, -50%) scale(1.1);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    }
+
+    .dice-btn:active {
+      transform: translate(-50%, -50%) scale(0.95);
+    }
+
+    .dice-btn.spin {
+      animation: dice-spin 0.2s ease forwards;
+    }
+
+    @keyframes dice-spin {
+      from { transform: translate(-50%, -50%) rotate(0deg); }
+      to { transform: translate(-50%, -50%) rotate(1080deg); }
+    }
+
+    @media (max-height: 300px) {
+      .dice-btn {
+        top: 50%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+      .half {
+        min-height: 0;
+      }
+      .divider {
+        width: 100%;
+        height: 1px;
+        flex-shrink: 0;
+      }
+      .dice-btn {
+        top: 50%;
+      }
+    }
+
+    .dice-btn svg {
+      width: 22px;
+      height: 22px;
+      fill: #eee;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="half" id="left">
+      <div class="picker-group">
+        <div class="color-input-row">
+          <div class="input-and-picker">
+            <span class="text-input-sizer" id="sizer-left" aria-hidden="true"></span>
+            <input
+              type="text"
+              class="text-input"
+              id="text-left"
+              spellcheck="false"
+              placeholder="#hex or name"
+            >
+            <color-input id="picker-left" value="#000" class="color-input-anchor"></color-input> 
+          </div>
+          <button class="copy-btn" id="copy-left" title="Copy color">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+        <span class="color-label" id="label-left">click or type a color</span>
+      </div>
+    </div>
+
+    <div class="divider">
+      <button class="dice-btn" id="dice-btn" title="Random colors">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="2" width="20" height="20" rx="3" ry="3" fill="none" stroke="#eee" stroke-width="1.8"/>
+          <circle cx="7.5" cy="7.5" r="1.6"/>
+          <circle cx="12" cy="12" r="1.6"/>
+          <circle cx="16.5" cy="16.5" r="1.6"/>
+          <circle cx="7.5" cy="16.5" r="1.6"/>
+          <circle cx="16.5" cy="7.5" r="1.6"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="half" id="right">
+      <div class="picker-group">
+        <div class="color-input-row">
+          <div class="input-and-picker">
+            <span class="text-input-sizer" id="sizer-right" aria-hidden="true"></span>
+            <input
+              type="text"
+              class="text-input"
+              id="text-right"
+              spellcheck="false"
+              placeholder="#hex or name"
+            >
+            <color-input id="picker-right" value="#000"class="color-input-anchor"></color-input> 
+          </div>
+          <button class="copy-btn" id="copy-right" title="Copy color">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+        <span class="color-label" id="label-right">click or type a color</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // this project uses https://github.com/argyleink/css-color-component, it's a cool library!
+    // the native color pickers in browsers have a lot of variance and give very little control, so this helped a ton.
+
+    import "https://unpkg.com/hdr-color-input";
+
+    function randomColor() {
+      const hex = Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0');
+      return '#' + hex;
+    }
+
+    function isValidColor(str) {
+      // Use the browser's own CSS parsing to validate
+      const opt = new Option();
+      opt.style.color = '';
+      opt.style.color = str;
+      return opt.style.color !== '';
+    }
+
+    function colorToHex(str) {
+      // Resolve any CSS color string to a computed rgb value, then to hex
+      const ctx = document.createElement('canvas').getContext('2d');
+      ctx.fillStyle = str;
+      return ctx.fillStyle; // returns hex like "#rrggbb"
+    }
+
+    function relativeLuminance(hex) {
+      // Convert hex to sRGB [0,1], then to relative luminance (WCAG formula)
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      const toLinear = (c) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+    }
+
+    function isDark(colorStr) {
+      try {
+        const hex = colorToHex(colorStr);
+        return relativeLuminance(hex) < 0.18;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // --- URL state management ---
+
+    function parseColorParam(raw) {
+      if (!raw) return null;
+      // Try the value as-is first (handles named colors, rgb(), hsl(), and #hex)
+      if (isValidColor(raw)) return raw;
+      // If it looks like a bare hex (no #), try with # prepended
+      if (/^[0-9a-fA-F]{3,8}$/.test(raw) && isValidColor('#' + raw)) return '#' + raw;
+      return null;
+    }
+
+    function stripHash(color) {
+      return color.startsWith('#') ? color.slice(1) : color;
+    }
+
+    function getColorsFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        left: parseColorParam(params.get('left')) || randomColor(),
+        right: parseColorParam(params.get('right')) || randomColor(),
+      };
+    }
+
+    let initialized = false;
+
+    function updateURL() {
+      if (!initialized) return;
+      const leftVal = document.getElementById('text-left').value.trim();
+      const rightVal = document.getElementById('text-right').value.trim();
+      const params = new URLSearchParams();
+      params.set('left', stripHash(leftVal));
+      params.set('right', stripHash(rightVal));
+      history.replaceState(null, '', '?' + params.toString());
+    }
+
+    // --- Side setup ---
+
+    const sides = {};
+
+    const DEFAULT_LABEL = 'click or type a color';
+
+    function setupSide(side, initialColor) {
+      const panel = document.getElementById(side);
+      const picker = document.getElementById('picker-' + side);
+      const textInput = document.getElementById('text-' + side);
+      const sizer = document.getElementById('sizer-' + side);
+      const copyBtn = document.getElementById('copy-' + side);
+      const label = document.getElementById('label-' + side);
+      let labelTimer = null;
+
+      function resizeInput() {
+        var content = textInput.value.trim() || textInput.placeholder || ' ';
+        sizer.textContent = content;
+        var w = sizer.offsetWidth + 24;
+        textInput.style.width = Math.max(80, w) + 'px';
+      }
+
+      function applyColor(color) {
+        panel.style.backgroundColor = color;
+
+        // Toggle light/dark text based on background luminance
+        panel.classList.toggle('light-text', isDark(color));
+
+        // Keep color-input in sync (accepts any CSS color string)
+        try {
+          picker.value = color;
+        } catch (e) { /* non-critical */ }
+
+        updateURL();
+      }
+
+      // Expose for external use (dice button)
+      sides[side] = { applyColor, textInput, resizeInput, picker };
+
+      // Set the initial color from URL or default
+      textInput.value = initialColor;
+      resizeInput();
+      applyColor(initialColor);
+
+      // Click text input -> open color picker anchored to the text input
+      textInput.addEventListener('click', function () {
+        if (typeof picker.setAnchor === 'function') picker.setAnchor(textInput);
+        if (typeof picker.show === 'function') picker.show();
+        else if (typeof picker.showPicker === 'function') picker.showPicker();
+      });
+
+      // Picker change -> update text input and panel
+      picker.addEventListener('change', function (e) {
+        var color = (e.detail && e.detail.value) || picker.value;
+        textInput.value = color;
+        textInput.classList.remove('invalid');
+        resizeInput();
+        //applyColor(color);
+      });
+
+      // Text input -> update panel and keep picker state in sync when valid
+      textInput.addEventListener('input', function () {
+        resizeInput();
+        var val = textInput.value.trim();
+        if (val === '') {
+          textInput.classList.remove('invalid');
+          return;
+        }
+        if (isValidColor(val)) {
+          textInput.classList.remove('invalid');
+          applyColor(val);
+          try { picker.value = val; } catch (err) {}
+        } else {
+          textInput.classList.add('invalid');
+        }
+      });
+
+      textInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') textInput.blur();
+      });
+
+      // Copy button
+      copyBtn.addEventListener('click', function () {
+        const val = textInput.value.trim();
+        if (!val) return;
+        navigator.clipboard.writeText(val).then(function () {
+          label.textContent = 'copied!';
+          if (labelTimer) clearTimeout(labelTimer);
+          labelTimer = setTimeout(function () {
+            label.textContent = DEFAULT_LABEL;
+            labelTimer = null;
+          }, 1000);
+        });
+      });
+    }
+
+    // Read URL params and initialize both sides before enabling URL updates
+    const initial = getColorsFromURL();
+    setupSide('left', initial.left);
+    setupSide('right', initial.right);
+    initialized = true;
+    updateURL();
+
+    // Dice button: randomize both sides and spin
+    var diceBtn = document.getElementById('dice-btn');
+    diceBtn.addEventListener('click', function () {
+      diceBtn.classList.add('spin');
+      ['left', 'right'].forEach(function (side) {
+        const color = randomColor();
+        const picker = sides[side].picker;
+        picker.colorspace = 'hex';
+        picker.value = color;
+        var canonical = picker.value;
+        sides[side].textInput.value = canonical;
+        sides[side].textInput.classList.remove('invalid');
+        sides[side].resizeInput();
+        sides[side].applyColor(canonical);
+      });
+    });
+    diceBtn.addEventListener('animationend', function () {
+      diceBtn.classList.remove('spin');
+    });
+  </script>
+</body>
+</html>
