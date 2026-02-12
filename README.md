@@ -1,6 +1,6 @@
 # Color Compare
 
-A small, single-page tool for comparing two colors side by side. Pick colors with the built-in picker or type any CSS color; the URL updates so you can share or bookmark a pair. You can also click the die in the middle to see a random pair!
+A small, single-page tool for comparing two colors side by side. Pick colors with the built-in picker or type any CSS color; the URL updates so you can share or bookmark a pair. You can also click the die in the middle to see a random pair! Online at [wcarss.ca/color_compare](https://wcarss.ca/color_compare).
 
 ![screenshot of the app](images/screenshot.png)
 
